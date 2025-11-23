@@ -18,15 +18,11 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider>
-          {children}
+          {mounted ? children : <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />}
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

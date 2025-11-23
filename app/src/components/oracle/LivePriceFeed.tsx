@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useContractRead } from 'wagmi';
+import { useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import { Activity, Clock, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { CONTRACTS, FEED_PROXY_ABI, CHAIN_IDS } from '@/config/contracts';
@@ -10,12 +10,11 @@ export default function LivePriceFeed() {
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   
   // Read latest price from FeedProxy
-  const { data: priceData, isLoading, isError, refetch } = useContractRead({
+  const { data: priceData, isLoading, isError, refetch } = useReadContract({
     address: CONTRACTS.feedProxy,
     abi: FEED_PROXY_ABI,
     functionName: 'latestRoundData',
     chainId: CHAIN_IDS.destination,
-    watch: true,
   });
 
   const [roundId, answer, startedAt, updatedAt, answeredInRound] = priceData || [];

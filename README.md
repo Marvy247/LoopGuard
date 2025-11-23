@@ -1,15 +1,12 @@
-# Reactivate
+# ReactFeed
 Production-grade Reactive Network solutions for autonomous blockchain operations
 
 ---
 
-## 🚀 Projects
+##  Projects
 
-### 1. **Reactivate** - Contract Funding Automation
+### 1. **ReactFeed** - Contract Funding Automation
 One stop solution to keep your reactive and callback contracts always active
-
-**Live Link**: https://reactivat.app  
-**Demo**: https://www.loom.com/share/7d530114a9b24a59bbbbd48a1251e602
 
 ### 2. **Cross-Chain Price Feed Oracle** 🆕
 Autonomous Chainlink oracle relay for Reactive Bounties 2.0
@@ -23,7 +20,7 @@ Autonomous Chainlink oracle relay for Reactive Bounties 2.0
 
 1. [Overview](#overview)  
 2. [Cross-Chain Oracle](#cross-chain-oracle-bounty-1)
-3. [Reactivate Platform](#reactivate-platform)
+3. [ReactFeed Platform](#ReactFeed-platform)
 4. [Problem Statement](#problem-statement)  
 5. [Solution](#solution)  
 6. [How It Works](#how-it-works)  
@@ -177,8 +174,8 @@ Traditional approaches **cannot** achieve this autonomously:
 
 ```bash
 # Clone repository
-git clone https://github.com/YourRepo/Reactivate
-cd Reactivate/Contracts
+git clone https://github.com/YourRepo/ReactFeed
+cd ReactFeed/Contracts
 
 # Install dependencies
 forge install
@@ -202,7 +199,7 @@ forge test -vv
 
 ---
 
-## Reactivate Platform  
+## ReactFeed Platform  
 
 ---  
 
@@ -210,7 +207,7 @@ forge test -vv
 
 Reactive and callback contracts need constant funding with REACT or native tokens to stay active. Without this, they become inactive, especially when tracking high-volume events. Developers are forced to manually monitor and top up contracts, leading to downtime and missed events.
 
-Reactivate automates this process. It deploys monitoring and funding contracts that track events, check balances, and refill when needed. If a contract becomes inactive, coverDebt() is triggered to restore it. This makes Reactive contracts self-sustaining, reliable, and production-ready.
+ReactFeed automates this process. It deploys monitoring and funding contracts that track events, check balances, and refill when needed. If a contract becomes inactive, coverDebt() is triggered to restore it. This makes Reactive contracts self-sustaining, reliable, and production-ready.
 
 ---  
 
@@ -222,7 +219,7 @@ Reactive contracts and callback contracts need REACT tokens and native tokens on
 
 ## Solution  
 
-Reactivate solves this pain point by automated monitoring, topping up and reactivation of reactive and callback contracts using reactive contracts of it's own. The solution is well suited for reactive contracts and the reactive ecosystem because it tracks the event emiited in the callback contract the user specifies and checks the balance of both reactive and callback contracts after every event and if the balance is below a specific threshold or has become inactive, the reactivate callback contract automatically funds the user specified contracts and if needed calls the "coverDebt()" function to reactivate them.
+ReactFeed solves this pain point by automated monitoring, topping up and reactivation of reactive and callback contracts using reactive contracts of it's own. The solution is well suited for reactive contracts and the reactive ecosystem because it tracks the event emiited in the callback contract the user specifies and checks the balance of both reactive and callback contracts after every event and if the balance is below a specific threshold or has become inactive, the ReactFeed callback contract automatically funds the user specified contracts and if needed calls the "coverDebt()" function to ReactFeed them.
 
 ---  
 
@@ -241,7 +238,7 @@ The working mechanism of the dapp can be broken down into 4 steps
    - The monitoring reactive contract picks up an event from the callback contract being monitored and emits a "Callback" event to call the funding function on the funding contract.
    - The funding function on the funding contract is called by the system contract, if the contracts balances are below the user specified threshold then REACT/native tokens are sent to the user specified contracts to keep them active.
 4. **Contract Reactivation**:
-   - If the contracts are inactive then the "coverDebt()" function is called to reactivate them.
+   - If the contracts are inactive then the "coverDebt()" function is called to ReactFeed them.
 
 ---  
 
@@ -256,7 +253,7 @@ The working mechanism of the dapp can be broken down into 4 steps
 
 ### Reactive
 
-Reactivate was built to prevent and solve inactive reactive and callback contracts, but in order to accomplish we also used these utilities.
+ReactFeed was built to prevent and solve inactive reactive and callback contracts, but in order to accomplish we also used these utilities.
 Another problem that we aimed to solve with the project is the tideous process it takes for developers to get REACT mainnet tokens to power their contracts, 
 to solve this we also made use of reactive contracts to make funding their dev accounts easier, this was accomplished by reactive contracts that handled the "bridging process".
 Below is a description of the reactive stack was used in the project.
@@ -265,7 +262,7 @@ Below is a description of the reactive stack was used in the project.
 i.e a reactive contract that listens for the event that is emitted in a callback contract and then checks the balance of both 
 the first reactive contract and that of it's callback if any of them have below the specified threshold then the funder contract 
 sends the refill amount to the reactive contract and/or the callback and if the callback and/or reactive contract is inactive then it calls the "coverDebt()" function 
-to reactivate them. Below are the code snippets that show how this was implemented.
+to ReactFeed them. Below are the code snippets that show how this was implemented.
 deploying a funder contract
 ```solidity
   function createFunder(address dev, address callbackContract, address reactiveContract, uint256 refillValue, uint256 refillthreshold) payable external {
@@ -341,7 +338,7 @@ reactivating an inactive contract
         }
     }
 ```
-The full code can be found [here](https://github.com/NatX223/Reactivate/tree/main/Contracts/src)
+The full code can be found [here](https://github.com/NatX223/ReactFeed/tree/main/Contracts/src)
 
 - Bridging Tokens - In order to fund dev accounts with ETH from Base, we built a mini base bridge that devs can deposit to then the emitted 
 "Received(address,uint256)" is tracked by a reactive contract deployed n REACT mainnet and a corresponding callback to dispense the REACT tokens.
@@ -436,7 +433,7 @@ developed using Node.js and Express.js, it handles user registration, contract d
 The repository has to be cloned first
 
 ```bash  
-  git clone https://github.com/NatX223/Reactivate  
+  git clone https://github.com/NatX223/ReactFeed  
 ```
 - Smart contracts
 
@@ -523,4 +520,4 @@ The repository has to be cloned first
 
 ## Acknowledgments  
 
-Special thanks to **BUIDL WITH REACT x Dorahacks Hackathon 2025** organizers: REACT and other sponsors like Base. The REACT products played a pivotal role in building Reactivate functionality and impact. Special thanks to all builders and mentors - Ivan and Constantine for all the help rendered during the build phase.
+Special thanks to **BUIDL WITH REACT x Dorahacks Hackathon 2025** organizers: REACT and other sponsors like Base. The REACT products played a pivotal role in building ReactFeed functionality and impact. Special thanks to all builders and mentors - Ivan and Constantine for all the help rendered during the build phase.

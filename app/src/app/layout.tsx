@@ -10,22 +10,22 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Reactivate - Keep Your Reactive Contracts Alive",
+  title: "Reactive Cross-Chain Oracle | Bounty #1 Submission",
   description:
-    "Reactivate ensures your Reactive and Callback contracts never go inactive. Monitor balances, automate refills, and stay worry-free with ETH, REACT, or stablecoins.",
+    "Autonomous cross-chain price feed oracle powered by Reactive Contracts. Mirror Chainlink feeds from Ethereum to Base with zero trust assumptions.",
   keywords:
-    "reactive contracts, callback contracts, smart contract monitoring, auto refills, Web3 infrastructure, blockchain automation",
+    "reactive contracts, cross-chain oracle, chainlink, price feed, defi, ethereum, base, trustless oracle",
   openGraph: {
-    title: "Reactivate - Keep Your Reactive Contracts Alive",
+    title: "Reactive Cross-Chain Oracle",
     description:
-      "A monitoring and refill system for Reactive contracts. Track, top-up, and automate — ensuring your dApps never stop working.",
+      "Production-grade cross-chain oracle using Reactive Contracts for autonomous price feed mirroring.",
     images: ["/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Reactivate - Autonomous Monitoring for Reactive Contracts",
+    title: "Reactive Cross-Chain Oracle",
     description:
-      "Never let your Reactive or Callback contracts go inactive. Reactivate tracks and automatically refills balances.",
+      "Trustless, autonomous cross-chain price feeds powered by Reactive Network.",
   },
 };
 

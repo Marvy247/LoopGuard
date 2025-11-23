@@ -336,7 +336,7 @@ function DashboardContent() {
           <div className="max-w-6xl mx-auto px-4 pt-8 pb-6">
             <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Reactivate Dashboard
+                ReactFeed Dashboard
               </h1>
               <p className="text-xl text-gray-600 dark:text-gray-300 mb-2">
                 Track, manage, and top-up your Reactive contracts in one place.
