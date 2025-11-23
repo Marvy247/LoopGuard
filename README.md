@@ -1,523 +1,498 @@
-# ReactFeed
-Production-grade Reactive Network solutions for autonomous blockchain operations
+# Reactivate
 
----
+A reactive blockchain platform enabling automated cross-chain operations, smart contract automation, and oracle services using the Reactive Network.
 
-##  Projects
+## Overview
 
-### 1. **ReactFeed** - Contract Funding Automation
-One stop solution to keep your reactive and callback contracts always active
+Reactivate is a comprehensive blockchain automation platform that leverages reactive programming patterns to enable:
 
-### 2. **Cross-Chain Price Feed Oracle** 🆕
-Autonomous Chainlink oracle relay for Reactive Bounties 2.0
+- **Automated Account Funding**: Monitor and automatically refill contract balances
+- **Debt Management**: Automatic debt payment for reactive contracts
+- **Oracle Services**: Cross-chain price feed relay with deviation-based triggers
+- **Developer Accounts**: Secure fund management with whitelist controls
 
-**Status**: Bounty #1 Submission  
-**Documentation**: [Oracle README](./Contracts/src/oracle/README.md)
+## Architecture
 
----
-
-## Table of Contents  
-
-1. [Overview](#overview)  
-2. [Cross-Chain Oracle](#cross-chain-oracle-bounty-1)
-3. [ReactFeed Platform](#ReactFeed-platform)
-4. [Problem Statement](#problem-statement)  
-5. [Solution](#solution)  
-6. [How It Works](#how-it-works)  
-7. [Technologies Used](#technologies-used)  
-8. [Setup and Deployment](#setup-and-deployment)  
-9. [Future Improvements](#future-improvements)  
-10. [Acknowledgments](#acknowledgments)
-
----
-
-## Cross-Chain Oracle (Bounty #1)
-
-### Architecture Overview
+### System Overview
 
 ```mermaid
 graph TB
-    subgraph "Origin Chain (Ethereum Sepolia)"
-        A[Chainlink ETH/USD Feed]
-        A -->|AnswerUpdated Event| B[Event Emission]
+    subgraph "Frontend Layer"
+        A[Next.js Web App]
+        B[Web3 Provider]
+        C[RainbowKit Wallet]
+    end
+    
+    subgraph "Smart Contract Layer"
+        D[Account Factory]
+        E[Funder Factory]
+        F[Debt Payer Factory]
+        G[Oracle System]
     end
     
     subgraph "Reactive Network"
-        C[OracleReactive Contract]
-        D[Event Subscription]
-        E[Cron Subscription]
-        F[Deviation Check]
-        G[EIP-712 Signing]
-        
-        D -->|Monitors| C
-        E -->|Fallback Every 5min| C
-        C --> F
-        F -->|>0.5% Change| G
-        G -->|Callback Trigger| H[Cross-Chain Message]
+        H[Reactive Contracts]
+        I[System Contract]
+        J[Callback Handler]
     end
     
-    subgraph "Destination Chain (Base Sepolia)"
-        I[OracleCallback Contract]
-        J[Signature Verification]
-        K[FeedProxy Contract]
-        L[Circuit Breaker]
-        M[Your dApp]
-        
-        I --> J
-        J -->|Verified| K
-        K --> L
-        L -->|latestRoundData| M
+    subgraph "Core Contracts"
+        K[Dev Account]
+        L[Funder]
+        M[Debt Payer]
+        N[Oracle Reactive]
+        O[Oracle Callback]
     end
     
-    B -.->|Subscribe| D
-    H -->|Trigger| I
+    A --> B
+    B --> C
+    A --> D
+    A --> E
+    A --> F
+    A --> G
     
-    style A fill:#ff9900
-    style C fill:#00ff00
-    style K fill:#8b5cf6
-    style M fill:#3b82f6
+    D --> K
+    E --> L
+    F --> M
+    G --> N
+    G --> O
+    
+    L --> H
+    M --> H
+    N --> H
+    
+    H --> I
+    I --> J
+    J --> L
+    J --> M
+    J --> O
+    
+    L --> K
+    M --> I
 ```
 
-### Data Flow Sequence
+### Funder Module Architecture
 
 ```mermaid
 sequenceDiagram
-    participant Origin as Chainlink Feed<br/>(Sepolia)
-    participant Reactive as OracleReactive<br/>(Reactive Network)
-    participant Callback as OracleCallback<br/>(Destination)
-    participant Proxy as FeedProxy<br/>(Destination)
-    participant dApp as Your dApp<br/>(Destination)
+    participant User
+    participant DevAccount
+    participant Funder
+    participant Reactive
+    participant SystemContract
+    participant TargetContract
     
-    Origin->>Origin: Price Update ($2000 → $2050)
-    Origin->>Origin: Emit AnswerUpdated(2050, roundId, timestamp)
+    User->>DevAccount: Deploy & Fund Account
+    User->>Funder: Create Funder (via Factory)
+    DevAccount->>Funder: Whitelist Funder
     
-    Note over Reactive: Subscribed to events
-    Origin-->>Reactive: Event detected
-    
-    Reactive->>Reactive: Calculate deviation: 2.5%
-    Reactive->>Reactive: Check threshold: 2.5% > 0.5% ✓
-    Reactive->>Reactive: Generate EIP-712 signature
-    Reactive->>Reactive: Emit Callback event
-    
-    Note over Callback: System contract triggers
-    Reactive-->>Callback: updatePrice(roundId, answer, signature)
-    
-    Callback->>Callback: Verify EIP-712 signature ✓
-    Callback->>Proxy: updateRoundData(...)
-    
-    Proxy->>Proxy: Validate staleness ✓
-    Proxy->>Proxy: Check round monotonicity ✓
-    Proxy->>Proxy: Circuit breaker: 2.5% < 20% ✓
-    Proxy->>Proxy: Store new round data
-    Proxy-->>Callback: Success
-    
-    Note over dApp: Read price feed
-    dApp->>Proxy: latestRoundData()
-    Proxy-->>dApp: (roundId, $2050, timestamps...)
-    dApp->>dApp: Use price in DeFi logic
+    loop Balance Monitoring
+        Reactive->>TargetContract: Check Balance
+        alt Balance <= Threshold
+            Reactive->>SystemContract: Trigger Callback
+            SystemContract->>Funder: Execute callback()
+            Funder->>TargetContract: Transfer Funds
+            Funder->>DevAccount: Request withdraw()
+            DevAccount->>Funder: Transfer Refill Amount
+        end
+    end
 ```
 
-### Security Model
+### Oracle Module Architecture
 
 ```mermaid
-graph LR
-    subgraph "Attack Vectors"
-        A1[Replay Attack]
-        A2[Price Manipulation]
-        A3[Staleness Attack]
-        A4[Front-running]
-        A5[DoS Attack]
+sequenceDiagram
+    participant OriginChain
+    participant OracleFeed
+    participant OracleReactive
+    participant ReactiveNetwork
+    participant OracleCallback
+    participant DestinationChain
+    
+    OracleFeed->>OracleReactive: AnswerUpdated Event
+    OracleReactive->>OracleReactive: Check Deviation Threshold
+    
+    alt Deviation > Threshold
+        OracleReactive->>OracleReactive: Generate EIP-712 Signature
+        OracleReactive->>ReactiveNetwork: Emit Callback
+        ReactiveNetwork->>OracleCallback: Execute updatePrice()
+        OracleCallback->>OracleCallback: Verify Signature
+        OracleCallback->>DestinationChain: Update Price Feed
     end
     
-    subgraph "Mitigations"
-        M1[EIP-712 + Round ID]
-        M2[Circuit Breaker 20%]
-        M3[1 Hour Threshold]
-        M4[Autonomous No User Tx]
-        M5[Cron Fallback]
-    end
-    
-    A1 -->|Prevents| M1
-    A2 -->|Prevents| M2
-    A3 -->|Prevents| M3
-    A4 -->|Prevents| M4
-    A5 -->|Prevents| M5
-    
-    style A1 fill:#ef4444
-    style A2 fill:#ef4444
-    style A3 fill:#ef4444
-    style A4 fill:#ef4444
-    style A5 fill:#ef4444
-    style M1 fill:#10b981
-    style M2 fill:#10b981
-    style M3 fill:#10b981
-    style M4 fill:#10b981
-    style M5 fill:#10b981
+    Note over OracleReactive,ReactiveNetwork: Also supports Cron-based polling
 ```
 
-### Why Reactive Contracts Are Essential
+### Debt Payer Module Architecture
 
-Traditional approaches **cannot** achieve this autonomously:
+```mermaid
+sequenceDiagram
+    participant User
+    participant DebtPayer
+    participant DebtReactive
+    participant SystemContract
+    participant TargetContract
+    
+    User->>DebtPayer: Deploy DebtPayer (via Factory)
+    User->>DebtReactive: Deploy DebtReactive (via Factory)
+    User->>DebtPayer: Fund with ETH
+    
+    loop Debt Monitoring
+        DebtReactive->>SystemContract: Subscribe to Events
+        SystemContract->>DebtReactive: Debt Accumulated Event
+        DebtReactive->>SystemContract: Trigger Callback
+        SystemContract->>DebtPayer: Execute callback()
+        DebtPayer->>TargetContract: Call coverDebt()
+        TargetContract->>SystemContract: Pay Debt
+    end
+```
 
-| Requirement | Traditional Bot | Reactive Contracts |
-|------------|----------------|-------------------|
-| **24/7 Monitoring** | ❌ Requires infrastructure | ✅ Built-in |
-| **Trustless** | ❌ Operator must be trusted | ✅ Decentralized |
-| **No Downtime** | ❌ Single point of failure | ✅ Network consensus |
-| **Cross-Chain Triggers** | ❌ Manual relay needed | ✅ Autonomous callbacks |
-| **Cost Efficiency** | ❌ Server costs + gas | ✅ Only gas |
-| **Censorship Resistance** | ❌ Can be blocked | ✅ Permissionless |
+### Contract Hierarchy
 
-**Key Insight**: Smart contracts on standard chains cannot listen to events from other chains or trigger cross-chain actions autonomously. Reactive Contracts make this oracle **fundamentally impossible to build otherwise**.
+```mermaid
+classDiagram
+    class AbstractCallback {
+        +address service
+        +callback()
+        +authorizedSenderOnly()
+    }
+    
+    class AbstractReactive {
+        +ISystemContract service
+        +react()
+        +subscribe()
+    }
+    
+    class DevAccount {
+        +address owner
+        +address admin
+        +mapping whitelisted
+        +whitelist()
+        +withdraw()
+    }
+    
+    class Funder {
+        +address callbackReceiver
+        +uint256 refillValue
+        +uint256 refillThreshold
+        +callback()
+    }
+    
+    class FunderReactive {
+        +address callbackContract
+        +react()
+    }
+    
+    class DebtPayer {
+        +address callbackContract
+        +callback()
+    }
+    
+    class DebtReactive {
+        +address debtPayer
+        +react()
+    }
+    
+    class OracleReactive {
+        +address originFeed
+        +uint256 deviationThreshold
+        +react()
+    }
+    
+    class OracleCallback {
+        +address feedProxy
+        +updatePrice()
+    }
+    
+    AbstractCallback <|-- Funder
+    AbstractCallback <|-- DebtPayer
+    AbstractCallback <|-- OracleCallback
+    AbstractReactive <|-- FunderReactive
+    AbstractReactive <|-- DebtReactive
+    AbstractReactive <|-- OracleReactive
+    
+    Funder --> DevAccount
+    FunderReactive --> Funder
+    DebtReactive --> DebtPayer
+    OracleReactive --> OracleCallback
+```
 
-### Quick Start
+## Project Structure
+
+```
+Reactivate/
+├── app/                          # Next.js Frontend Application
+│   ├── src/
+│   │   ├── app/                  # Next.js App Router
+│   │   │   ├── page.tsx         # Landing page
+│   │   │   ├── dashboard/       # User dashboard
+│   │   │   ├── create-account/  # Account creation flow
+│   │   │   └── api/             # API routes
+│   │   ├── components/          # React components
+│   │   │   ├── ui/              # UI components
+│   │   │   ├── layout/          # Layout components
+│   │   │   ├── oracle/          # Oracle-specific components
+│   │   │   └── sections/        # Page sections
+│   │   ├── config/              # Configuration files
+│   │   ├── hooks/               # Custom React hooks
+│   │   ├── lib/                 # Utility libraries
+│   │   ├── providers/           # React context providers
+│   │   └── types/               # TypeScript type definitions
+│   └── package.json
+│
+└── Contracts/                    # Smart Contracts (Foundry)
+    ├── src/
+    │   ├── account/             # Account management contracts
+    │   │   ├── devAccount.sol
+    │   │   ├── accountFactory.sol
+    │   │   ├── bridgeCallback.sol
+    │   │   └── bridgeReactive.sol
+    │   ├── funder/              # Auto-funding contracts
+    │   │   ├── funder.sol
+    │   │   ├── reactive.sol
+    │   │   ├── funderFactory.sol
+    │   │   └── reactiveFactory.sol
+    │   ├── debtPayer/           # Debt management contracts
+    │   │   ├── debtPayer.sol
+    │   │   ├── debtReactive.sol
+    │   │   ├── debtPayerFactory.sol
+    │   │   └── debtReactiveFactory.sol
+    │   └── oracle/              # Oracle relay contracts
+    │       ├── OracleReactive.sol
+    │       ├── OracleCallback.sol
+    │       ├── FeedProxy.sol
+    │       └── IAggregatorV3.sol
+    ├── script/                  # Deployment scripts
+    ├── test/                    # Contract tests
+    └── foundry.toml
+```
+
+## Core Modules
+
+### 1. Developer Account Module
+
+**Purpose**: Secure fund management with access control
+
+**Key Features**:
+- Admin and owner role management
+- Whitelist-based withdrawal system
+- Factory pattern deployment
+- Multi-contract fund distribution
+
+**Contracts**:
+- `DevAccount.sol`: Main account contract with access control
+- `accountFactory.sol`: Factory for deploying accounts
+
+### 2. Funder Module
+
+**Purpose**: Automated balance monitoring and refilling
+
+**Key Features**:
+- Threshold-based balance monitoring
+- Automatic fund transfers
+- Dual contract support (callback + reactive)
+- Integration with DevAccount
+
+**Contracts**:
+- `funder.sol`: Callback contract for fund distribution
+- `reactive.sol`: Reactive contract for balance monitoring
+- `funderFactory.sol`: Factory for funder deployment
+- `reactiveFactory.sol`: Factory for reactive deployment
+
+**Flow**:
+1. Reactive contract monitors target contract balances
+2. When balance drops below threshold, triggers callback
+3. Funder contract receives callback and transfers funds
+4. Funds sourced from whitelisted DevAccount
+
+### 3. Debt Payer Module
+
+**Purpose**: Automatic debt payment for reactive contracts
+
+**Key Features**:
+- Real-time debt monitoring
+- Automatic debt clearing
+- System contract integration
+- Gas optimization
+
+**Contracts**:
+- `debtPayer.sol`: Callback contract for debt payment
+- `debtReactive.sol`: Reactive contract for debt monitoring
+- `debtPayerFactory.sol`: Factory for payer deployment
+- `debtReactiveFactory.sol`: Factory for reactive deployment
+
+**Flow**:
+1. DebtReactive monitors system contract for debt accumulation
+2. On debt detection, triggers callback to DebtPayer
+3. DebtPayer calls `coverDebt()` on target contracts
+4. Debt cleared from system contract
+
+### 4. Oracle Module
+
+**Purpose**: Cross-chain price feed relay with verification
+
+**Key Features**:
+- Event-driven price updates
+- Deviation threshold filtering
+- EIP-712 signature verification
+- Cron-based polling fallback
+- Multi-chain support
+
+**Contracts**:
+- `OracleReactive.sol`: Monitors origin chain price feeds
+- `OracleCallback.sol`: Updates destination chain feeds
+- `FeedProxy.sol`: Chainlink-compatible price feed interface
+- `IAggregatorV3.sol`: Aggregator interface
+
+**Flow**:
+1. OracleReactive subscribes to AnswerUpdated events
+2. On price update, checks deviation threshold
+3. If deviation exceeds threshold, generates EIP-712 signature
+4. Emits callback with price data and signature
+5. OracleCallback verifies signature and updates local feed
+
+## Technology Stack
+
+### Frontend
+- **Framework**: Next.js 15.5 (React 19)
+- **Styling**: Tailwind CSS 4
+- **Web3**: 
+  - wagmi 2.16
+  - viem 2.37
+  - RainbowKit 2.2
+  - ethers.js 6.15
+- **State Management**: TanStack Query 5.87
+- **UI**: lucide-react, react-hot-toast
+- **Backend**: Firebase 12.3
+
+### Smart Contracts
+- **Framework**: Foundry (Forge, Cast, Anvil)
+- **Language**: Solidity ^0.8.0
+- **Libraries**: reactive-lib (Abstract contracts)
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Foundry
+- MetaMask or compatible Web3 wallet
+
+### Frontend Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/YourRepo/ReactFeed
-cd ReactFeed/Contracts
-
-# Install dependencies
-forge install
-
-# Setup environment
+cd app
+npm install
 cp .env.example .env
-# Fill in your keys and RPCs
-
-# Deploy to destination chain
-forge script script/DeployOracle.s.sol:DeployOracle --rpc-url $DESTINATION_RPC --broadcast
-
-# Deploy to Reactive Network
-forge script script/DeployOracle.s.sol:DeployReactive --rpc-url $REACTIVE_RPC --broadcast
-
-# Run tests
-forge test -vv
+# Configure environment variables
+npm run dev
 ```
 
-**Full Documentation**: [Oracle README](./Contracts/src/oracle/README.md)  
-**Deployment Guide**: [DEPLOYMENT.md](./Contracts/src/oracle/DEPLOYMENT.md)
+The app will be available at `http://localhost:3000`
 
----
+### Smart Contract Setup
 
-## ReactFeed Platform  
-
----  
-
-## Overview  
-
-Reactive and callback contracts need constant funding with REACT or native tokens to stay active. Without this, they become inactive, especially when tracking high-volume events. Developers are forced to manually monitor and top up contracts, leading to downtime and missed events.
-
-ReactFeed automates this process. It deploys monitoring and funding contracts that track events, check balances, and refill when needed. If a contract becomes inactive, coverDebt() is triggered to restore it. This makes Reactive contracts self-sustaining, reliable, and production-ready.
-
----  
-
-## Problem Statement  
-
-Reactive contracts and callback contracts need REACT tokens and native tokens on other chains to be kept active otherwise they will become inactive due to lack tokens to run them, thus there needs to be constant manual monitoring of these contracts by the developers especially for reactive contracts that track high volume events like token transfers and approvals.
-
----  
-
-## Solution  
-
-ReactFeed solves this pain point by automated monitoring, topping up and reactivation of reactive and callback contracts using reactive contracts of it's own. The solution is well suited for reactive contracts and the reactive ecosystem because it tracks the event emiited in the callback contract the user specifies and checks the balance of both reactive and callback contracts after every event and if the balance is below a specific threshold or has become inactive, the ReactFeed callback contract automatically funds the user specified contracts and if needed calls the "coverDebt()" function to ReactFeed them.
-
----  
-
-## How It Works  
-
-The working mechanism of the dapp can be broken down into 4 steps
-
-1. **User Registration**:
-   - The user signs up by generating a funding account.
-   - This can be funded with REACT tokens or ETH and USDC on Base and other supported chains.
-2. **Making a Deployment**:
-   - The user inputs the addresses of the reactive and callback contracts and the signature hash of the event they want to track.
-   - The user sepicifiies the balance threshold and the refill amounts.
-   - The monitoring reactive contract and the corresponding funding callback contract are deployed using the provided parameters.
-3. **Monitoring a Trigger event**:
-   - The monitoring reactive contract picks up an event from the callback contract being monitored and emits a "Callback" event to call the funding function on the funding contract.
-   - The funding function on the funding contract is called by the system contract, if the contracts balances are below the user specified threshold then REACT/native tokens are sent to the user specified contracts to keep them active.
-4. **Contract Reactivation**:
-   - If the contracts are inactive then the "coverDebt()" function is called to ReactFeed them.
-
----  
-
-## Technologies Used  
-
-| **Technology**    | **Purpose**                                              |  
-|-------------------|----------------------------------------------------------|
-| **Reactive**      | Use of Reactive's reactive and callback contracts.       |  
-| **Firestore**     | Tracking platform activity and metrics.                  |
-| **Wagmi**         | Smart contract interaction.                              | 
-| **Next.js**       | Frontend framework for building the user interface.      |  
-
-### Reactive
-
-ReactFeed was built to prevent and solve inactive reactive and callback contracts, but in order to accomplish we also used these utilities.
-Another problem that we aimed to solve with the project is the tideous process it takes for developers to get REACT mainnet tokens to power their contracts, 
-to solve this we also made use of reactive contracts to make funding their dev accounts easier, this was accomplished by reactive contracts that handled the "bridging process".
-Below is a description of the reactive stack was used in the project.
-
-- Contract Funding - To keep track of a reactive contract's balance we wrote a reactive contract that tracks the contract's usage 
-i.e a reactive contract that listens for the event that is emitted in a callback contract and then checks the balance of both 
-the first reactive contract and that of it's callback if any of them have below the specified threshold then the funder contract 
-sends the refill amount to the reactive contract and/or the callback and if the callback and/or reactive contract is inactive then it calls the "coverDebt()" function 
-to ReactFeed them. Below are the code snippets that show how this was implemented.
-deploying a funder contract
-```solidity
-  function createFunder(address dev, address callbackContract, address reactiveContract, uint256 refillValue, uint256 refillthreshold) payable external {
-      address devAccount = IAccountFactory(accountFactory).devAccounts(dev);
-      uint256 devAccountBalance = devAccount.balance;
-      uint256 withdrawAmount = (refillValue * 2);
-      uint256 initialFundAmount = withdrawAmount + 2 ether;
-
-      require(devAccountBalance >= withdrawAmount, "Not enough REACT in dev account");
-
-      Funder newReactiveFunder = new Funder{value: initialFundAmount}(callbackContract, reactiveContract, refillValue, refillthreshold, devAccount);
-      address funderAddress = address(newReactiveFunder);
-
-      IDevAccount(devAccount).withdraw(address(this), initialFundAmount);
-      IDevAccount(devAccount).whitelist(funderAddress);
-
-      latestDeployed = funderAddress;
-
-      emit Setup(dev, funderAddress);
-  }
-```
-deploying a reactive contract to track callback events
-```solidity
-    function createReactive(address funderContract, address callbackContract, uint256 eventTopic) payable external {
-        Reactive newReactive = new Reactive{value: 2 ether}(funderContract, callbackContract, eventTopic);
-        latestDeployed = address(newReactive);
-        
-        emit Setup(msg.sender, address(newReactive));
-    }
-```
-funding a reactive and/or callback Contract
-```solidity
-    function callback(address sender) external authorizedSenderOnly rvmIdOnly(sender) {
-        uint256 callbackBal = callbackReceiver.balance;
-        if (callbackBal <= refillThreshold) {
-            (bool success, ) = callbackReceiver.call{value: refillValue}("");
-            require(success, "Payment failed.");
-
-            IDevAccount(devAccount).withdraw(address(this), refillValue);
-
-            emit refillHandled(address(this), callbackReceiver);
-        } else {
-            emit callbackHandled(address(this));
-        }
-
-        uint256 reactiveBal = reactiveReceiver.balance;
-        if (reactiveBal <= refillThreshold) {
-            (bool success, ) = reactiveReceiver.call{value: refillValue}("");
-            require(success, "Payment failed.");
-
-            IDevAccount(devAccount).withdraw(address(this), refillValue);
-
-            emit refillHandled(address(this), reactiveReceiver);
-        } else {
-            emit callbackHandled(address(this));
-        }
-
-    }
-```
-reactivating an inactive contract
-```solidity
-    function callback(address sender) external authorizedSenderOnly rvmIdOnly(sender) {
-        uint256 callbackDebt = ISystem(SYSTEM_CONTRACT).debts(callbackContract);
-        uint256 reactiveDebt = ISystem(SYSTEM_CONTRACT).debts(reactiveContract);
-        if (callbackDebt > 0) {
-            IAbsctractPayer(callbackContract).coverDebt();
-            emit debtPaid(address(this));
-        }
-
-        if (reactiveDebt > 0) {
-            IAbsctractPayer(reactiveContract).coverDebt();
-            emit debtPaid(address(this));
-        }
-    }
-```
-The full code can be found [here](https://github.com/NatX223/ReactFeed/tree/main/Contracts/src)
-
-- Bridging Tokens - In order to fund dev accounts with ETH from Base, we built a mini base bridge that devs can deposit to then the emitted 
-"Received(address,uint256)" is tracked by a reactive contract deployed n REACT mainnet and a corresponding callback to dispense the REACT tokens.
-Here are some code snippets
-receive function on base bridge contract
-```solidity
-    receive() external payable {
-        if (msg.value > 0.00024 ether) {
-            (bool success, ) = msg.sender.call{value: msg.value}("");
-            require(success, "Payment value exceeded.");
-        } else {
-            emit Received(
-            msg.sender,
-            msg.value
-        );
-        }
-    }
-```
-bridge react function
-```solidity
-    function react(LogRecord calldata log) external vmOnly {
-        address recipient = address(uint160(log.topic_1));
-        uint256 sentValue = uint256(log.topic_2);
-
-        bytes memory payload = abi.encodeWithSignature(
-            "callback(address, address, uint256)",
-            address(0),
-            recipient,
-            sentValue
-        );
-
-        emit Callback(
-        REACT_ID,
-        callbackHandler,
-        GAS_LIMIT,
-        payload
-    );
-    }
-```
-callback on the bridge callback contract
-```solidity
-    function callback(address sender, address recipient, uint256 sentValue) external authorizedSenderOnly rvmIdOnly(sender) {
-        address devAccount = IAccountFactory(accountFactoryContract).devAccounts(recipient);
-        if (devAccount == address(0)) {
-            uint256 receiveValue = (sentValue * rateNum) / rateDen;
-            (bool success, ) = recipient.call{value: receiveValue}("");
-            require(success, "brdging failed.");
-
-            emit bridgeHandled(recipient, sentValue, receiveValue);
-        } else {
-            uint256 receiveValue = (sentValue * rateNum) / rateDen;
-            (bool success, ) = devAccount.call{value: receiveValue}("");
-            require(success, "brdging failed.");
-
-            emit bridgeHandled(recipient, sentValue, receiveValue);
-        }
-    }
+```bash
+cd Contracts
+forge install
+forge build
+forge test
 ```
 
-- Smart contract factories were utilized to make it easier to quickly deploy the needed contracts here their addresses on the react mainnet.
+### Deploy Contracts
 
-| **Contract**            | **Addres**                                 | **Function**                                                             |
-|-------------------------|--------------------------------------------|--------------------------------------------------------------------------|
-| **AccountFactory**      | 0xD2401b212eFc78401b51C68a0CC92B1163b1e6db | Deploying dev accounts for users - these are used to fund their contracts|
-| **FunderFactory**       | 0x504731A1b6a7706dCef75f42DEE72565D41B097C | Deploying funder callback contracts.                                     |
-| **ReactiveFactory**     | 0x534028e697fbAF4D61854A27E6B6DBDc63Edde8c | Deploying reactive contracts that track callback.                        |
-| **DebtPayerFactory**    | 0x3054Ea734dd290DcC3bf032bE50493ABd4361910 | Deploying debt payer callback contracts.                                 |
-| **DebtReactiveFactory** | 0xB89f13F648c554cb18A120BA82E42Beda4557792 | Deploying reactive contracts that track contract status.                 |
+```bash
+# Deploy account factory
+forge script script/DeployAccountFactory.s.sol --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
 
-Below is a table showing example contracts and their transaction hashes.
+# Deploy funder system
+forge script script/DeployFunderSystem.s.sol --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
 
-| **Contract**            | **Function**                               | **TransactionHash**                                                      |
-|-------------------------|--------------------------------------------|--------------------------------------------------------------------------|
-| **DevAccount**          | Dev Account funding                        | 0xabde594de4e1f00badd7d9b85b4e50d41b578908a8ef51fe744facdd9908541e       |
-| **FunderReactive**      | Tracking event on callback contract        | 0x3001c5bccb5f7f492307b1acf73a04c37a667c4a543b5e1f510f17da08066b8d       |
-| **FunderContract**      | Funding reactive and/or callback contract  | 0x060fef5c78bcaee31648f9698c2904c36a93c84cc9bbcf70f05837c4264dc046       |
-
-### Node.js
-
-The project utilizes a backend to improve the user experience, especially when deploying contracts like the funder and debt payer contracts. The backend was
-developed using Node.js and Express.js, it handles user registration, contract deployment, and other related tasks.
-
-## Setup and Deployment  
-
-### Prerequisites  
-
-- Node.js v16+  
-- Solidity development environment(Foundry)
-
-### Local Setup  
-
-The repository has to be cloned first
-
-```bash  
-  git clone https://github.com/NatX223/ReactFeed  
+# Deploy oracle system
+forge script script/DeployOracleSystem.s.sol --rpc-url <RPC_URL> --private-key <PRIVATE_KEY>
 ```
-- Smart contracts
 
-1. Navigate to the smart contracts directory:  
-  ```bash  
-  cd Contracts  
-  ```  
-2. Install dependencies:  
-  ```bash  
-  forge install
-  ```  
-3. Set up environment variables:
-  ```  
-  PRIVATE_KEY=<private key>
-  REACT_RPC_URL=https://mainnet-rpc.rnk.dev/
-  ```  
-4. Compile smart contracts:  
-  ```bash  
-  forge build 
-  ```  
-5. Run deployment scripts:
-  deploy dev account
-  - using the factory
-  ```bash
-  cast send --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY accountFactoryAddress "createAccount(address)" 0xyouraddress --value initialfundamountether
-  ```
-  - deploying directly
-  ```bash
-  forge create --broadcast --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY src/account/devAccount.sol:DevAccount --value initialfundamountether --constructor-args 0xyouraddress
-  ```
-  deploy funder(callback) contract
-  - using the factory
-  ```bash
-  cast send --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY funderFactoryAddress "createFunder(address,address,address,uint256,uint256)" 0xyouraddress 0xcallbackContract 0xreactiveContract refillValue refillthreshold --value initialfundamountether
-  ```
-  - deploying directly
-  ```bash
-  forge create --broadcast --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY src/funder/funder.sol:Funder --value initialfundamountether --constructor-args 0xcallbackContract 0xreactiveContract refillValue refillthreshold 0xyourDevAccount
-  ```
-  deploy reactive contract
-  - getting funder contract address
-  ```bash
-  cast call --rpc-url $REACT_RPC_URL funderFactoryAddress "latestDeployed()"
-  ```
-  - using the factory
-  ```bash
-  cast send --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY reactiveFactoryAddress "createReactive(address,address,uint256)" 0xdeployedfunderaddress 0xcallbackContract calleventtopic --value initialfundamountether
-  ```
-  - deploying directly
-  ```bash
-  forge create --broadcast --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY src/funder/reactive.sol:Reactive --value initialfundamountether --constructor-args 0xdeployedfunderaddress 0xcallbackContract calleventtopic
-  ```
-  deploy debt payer contract
-  - using debt payer factory
-  ```bash
-  cast send --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY debtPayerFactoryAddress "createPayer(address,address,address)" 0xyouraddress 0xcallbackContract 0xreactiveContract --value initialfundamountether
-  ```
-  - deploying directly
-  ```bash
-  forge create --broadcast --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY src/debtPayer/debtPayer.sol:DebtPayer --value initialfundamountether --constructor-args 0xcallbackContract 0xreactiveContract
-  ```
-  deploy debt reactive contract
-  - getting debt payer address
-  ```bash
-  cast call --rpc-url $REACT_RPC_URL debtPayerFactoryAddress "latestDeployed()"
-  ```
-  - using debt reactive factory
-  ```bash
-  cast send --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY debtReactiveFactoryAddress "createPayerReactive(address,address,address)" 0xyouraddress 0xdebtpayerContract 0xfunderContract --value initialfundamountether
-  ```
-  - deploying directly
-  ```bash
-  forge create --broadcast --rpc-url $REACT_RPC_URL --private-key $PRIVATE_KEY src/debtPayer/debtPayerReactive.sol:DebtPayerReactive --value initialfundamountether --constructor-args 0xyouraddress 0xdebtpayerContract 0xfunderContract
-  ```
----  
+## Environment Variables
 
-## Future Improvements
+### Frontend (.env)
+```
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+NEXT_PUBLIC_ACCOUNT_FACTORY_ADDRESS=0x...
+NEXT_PUBLIC_FUNDER_FACTORY_ADDRESS=0x...
+NEXT_PUBLIC_DEBT_PAYER_FACTORY_ADDRESS=0x...
+NEXT_PUBLIC_ORACLE_ADDRESS=0x...
+```
 
-1. Enable funding contracts to track callback events from other chains.
-2. Extensive audits on the protocol's smart contracts.
-3. Purchasing more REACT tokens to aid seamless payment "bridging".
+### Contracts (.env)
+```
+PRIVATE_KEY=your_private_key
+RPC_URL=your_rpc_url
+ETHERSCAN_API_KEY=your_api_key
+```
 
----  
+## Key Concepts
 
-## Acknowledgments  
+### Reactive Network
+A blockchain that enables smart contracts to react to events from other chains. Contracts subscribe to events and execute callbacks when conditions are met.
 
-Special thanks to **BUIDL WITH REACT x Dorahacks Hackathon 2025** organizers: REACT and other sponsors like Base. The REACT products played a pivotal role in building ReactFeed functionality and impact. Special thanks to all builders and mentors - Ivan and Constantine for all the help rendered during the build phase.
+### Callback Pattern
+Two-contract system where:
+1. **Reactive Contract**: Monitors events and triggers callbacks
+2. **Callback Contract**: Executes business logic on callback
+
+### Factory Pattern
+Standardized deployment system ensuring:
+- Consistent contract initialization
+- Upgradeable deployments
+- Centralized management
+- Event tracking
+
+### Whitelisting
+Security mechanism where:
+- DevAccount controls fund access
+- Only whitelisted contracts can withdraw
+- Admin can add/remove contracts
+- Prevents unauthorized fund drains
+
+## Use Cases
+
+1. **DApp Gas Tank**: Automatically refill smart contract gas balances
+2. **Protocol Maintenance**: Keep protocol contracts funded
+3. **Cross-chain Oracles**: Relay price feeds across chains
+4. **Debt Management**: Automatic debt clearing for reactive services
+5. **Account Abstraction**: Manage multiple contract balances from one account
+
+## Security Considerations
+
+- All factory contracts deploy with deterministic addresses
+- Whitelisting prevents unauthorized withdrawals
+- EIP-712 signatures prevent oracle manipulation
+- Callback authorization restricts execution to system contract
+- Deviation thresholds prevent unnecessary oracle updates
+
+## Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Write/update tests
+5. Submit a pull request
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Links
+
+- [Reactive Network Documentation](https://docs.reactive.network)
+- [Foundry Documentation](https://book.getfoundry.sh)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [RainbowKit Documentation](https://www.rainbowkit.com)
+
+## Support
+
+For questions and support:
+- Open an issue on GitHub
+- Contact the development team
+- Join our Discord community
