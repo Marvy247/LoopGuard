@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import '../../lib/reactive-lib/src/abstract-base/AbstractCallback.sol';
 import './FeedProxy.sol';
+import './IAggregatorV3.sol';
 
 contract OracleCallback is AbstractCallback {
     
@@ -16,6 +17,10 @@ contract OracleCallback is AbstractCallback {
     
     uint256 public immutable REACTIVE_CHAIN_ID;
     address public immutable ORIGIN_FEED_ADDRESS;
+    uint256 public immutable ORIGIN_CHAIN_ID;
+    
+    // For polling mechanism
+    IAggregatorV3 public originFeed;
     
     event PriceUpdated(
         uint80 indexed roundId,
@@ -36,11 +41,19 @@ contract OracleCallback is AbstractCallback {
         address callbackProxy_,
         address feedProxy_,
         uint256 reactiveChainId,
-        address originFeedAddress
+        address originFeedAddress,
+        uint256 originChainId,
+        address originFeedContract
     ) AbstractCallback(callbackProxy_) {
         feedProxy = feedProxy_;
         REACTIVE_CHAIN_ID = reactiveChainId;
         ORIGIN_FEED_ADDRESS = originFeedAddress;
+        ORIGIN_CHAIN_ID = originChainId;
+        
+        // Set origin feed for polling (only if on same chain as this callback)
+        if (originFeedContract != address(0)) {
+            originFeed = IAggregatorV3(originFeedContract);
+        }
         
         // Setup EIP-712 domain separator (must match reactive contract)
         DOMAIN_SEPARATOR = keccak256(
@@ -60,6 +73,8 @@ contract OracleCallback is AbstractCallback {
         uint256 startedAt,
         uint256 updatedAt,
         uint80 answeredInRound,
+        uint8 decimals,
+        string memory description,
         bytes32 providedDigest
     ) external authorizedSenderOnly {
         // Verify EIP-712 signature
@@ -100,10 +115,75 @@ contract OracleCallback is AbstractCallback {
     }
     
     function pollAndUpdate() external authorizedSenderOnly {
-        // This function would be called by cron-triggered callbacks
-        // In a full implementation, this would query the origin chain's
-        // Chainlink feed via cross-chain call and update if needed
-        // For now, this serves as a placeholder for the cron polling mechanism
+        // Query the origin Chainlink feed for latest round data
+        // Note: This works when the origin feed is accessible from this chain
+        // For cross-chain scenarios, this would need a bridge/relay mechanism
+        
+        require(address(originFeed) != address(0), "Origin feed not configured for polling");
+        
+        try originFeed.latestRoundData() returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        ) {
+            // Get feed metadata
+            uint8 decimals = originFeed.decimals();
+            string memory description = originFeed.description();
+            
+            // Update the feed proxy directly (no signature verification for polling)
+            // This is safe because it's called only via authorized reactive callback
+            try FeedProxy(feedProxy).updateRoundData(
+                roundId,
+                answer,
+                startedAt,
+                updatedAt,
+                answeredInRound
+            ) {
+                emit PriceUpdated(roundId, answer, updatedAt, bytes32(0));
+            } catch Error(string memory reason) {
+                emit UpdateFailed(roundId, reason);
+            } catch {
+                emit UpdateFailed(roundId, "Unknown error");
+            }
+        } catch Error(string memory reason) {
+            emit UpdateFailed(0, string(abi.encodePacked("Feed query failed: ", reason)));
+        } catch {
+            emit UpdateFailed(0, "Feed query failed");
+        }
+    }
+    
+    function pollRoundData(uint80 _roundId) external authorizedSenderOnly {
+        // Query specific round data from origin feed (for audit/historical data)
+        require(address(originFeed) != address(0), "Origin feed not configured for polling");
+        
+        try originFeed.getRoundData(_roundId) returns (
+            uint80 roundId,
+            int256 answer,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        ) {
+            // Update the feed proxy with historical data
+            try FeedProxy(feedProxy).updateRoundData(
+                roundId,
+                answer,
+                startedAt,
+                updatedAt,
+                answeredInRound
+            ) {
+                emit PriceUpdated(roundId, answer, updatedAt, bytes32(0));
+            } catch Error(string memory reason) {
+                emit UpdateFailed(roundId, reason);
+            } catch {
+                emit UpdateFailed(roundId, "Unknown error");
+            }
+        } catch Error(string memory reason) {
+            emit UpdateFailed(_roundId, string(abi.encodePacked("Round query failed: ", reason)));
+        } catch {
+            emit UpdateFailed(_roundId, "Round query failed");
+        }
     }
     
     function updateFeedProxy(address newFeedProxy) external {

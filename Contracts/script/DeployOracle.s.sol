@@ -45,7 +45,9 @@ contract DeployOracle is Script {
             callbackProxyAddr,
             address(feedProxy),
             block.chainid, // Reactive chain ID
-            originFeed
+            originFeed,
+            originChainId,
+            address(0) // No direct origin feed access for cross-chain (set if on same chain)
         );
         console.log("OracleCallback deployed at:", address(callback));
         
@@ -77,6 +79,8 @@ contract DeployReactive is Script {
         address callbackContract = vm.envAddress("CALLBACK_CONTRACT_ADDRESS");
         
         // Oracle config
+        uint8 decimals = uint8(vm.envUint("FEED_DECIMALS"));
+        string memory description = vm.envString("FEED_DESCRIPTION");
         uint256 deviationThresholdBps = vm.envUint("DEVIATION_THRESHOLD_BPS");
         uint256 cronInterval = vm.envUint("CRON_INTERVAL");
         uint256 initialFunding = vm.envUint("INITIAL_FUNDING");
@@ -90,7 +94,9 @@ contract DeployReactive is Script {
             originFeed,
             callbackContract,
             deviationThresholdBps,
-            cronInterval
+            cronInterval,
+            decimals,
+            description
         );
         console.log("OracleReactive deployed at:", address(reactive));
         

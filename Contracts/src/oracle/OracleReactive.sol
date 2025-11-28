@@ -22,6 +22,10 @@ contract OracleReactive is IReactive, AbstractPausableReactive {
     address public immutable ORIGIN_FEED;
     address public callbackContract;
     
+    // Feed metadata
+    uint8 public immutable FEED_DECIMALS;
+    string public feedDescription;
+    
     // Event signatures
     uint256 private constant ANSWER_UPDATED_TOPIC = uint256(keccak256("AnswerUpdated(int256,uint256,uint256)"));
     uint256 private constant CRON_TOPIC = uint256(keccak256("Tick(uint256)"));
@@ -55,7 +59,9 @@ contract OracleReactive is IReactive, AbstractPausableReactive {
         address originFeed,
         address callbackContract_,
         uint256 deviationThresholdBps,
-        uint256 cronInterval
+        uint256 cronInterval,
+        uint8 feedDecimals,
+        string memory feedDescription_
     ) payable {
         ORIGIN_CHAIN_ID = originChainId;
         DESTINATION_CHAIN_ID = destinationChainId;
@@ -63,6 +69,8 @@ contract OracleReactive is IReactive, AbstractPausableReactive {
         callbackContract = callbackContract_;
         DEVIATION_THRESHOLD_BPS = deviationThresholdBps;
         CRON_INTERVAL = cronInterval;
+        FEED_DECIMALS = feedDecimals;
+        feedDescription = feedDescription_;
         
         service = ISystemContract(payable(SYSTEM_CONTRACT));
         
@@ -197,12 +205,14 @@ contract OracleReactive is IReactive, AbstractPausableReactive {
         );
         
         bytes memory payload = abi.encodeWithSignature(
-            "updatePrice(uint80,int256,uint256,uint256,uint80,bytes32)",
+            "updatePrice(uint80,int256,uint256,uint256,uint80,uint8,string,bytes32)",
             roundId,
             answer,
             startedAt,
             updatedAt,
             answeredInRound,
+            FEED_DECIMALS,
+            feedDescription,
             digest
         );
         

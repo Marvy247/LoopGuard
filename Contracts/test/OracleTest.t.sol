@@ -31,6 +31,7 @@ contract OracleTest is Test {
     uint256 constant STALENESS_THRESHOLD = 3600; // 1 hour
     uint256 constant REACTIVE_CHAIN_ID = 1;
     address constant ORIGIN_FEED = address(0x5555);
+    uint256 constant ORIGIN_CHAIN_ID = 11155111; // Sepolia
     
     event RoundUpdated(
         uint80 indexed roundId,
@@ -63,7 +64,9 @@ contract OracleTest is Test {
             address(callbackProxy),
             address(feedProxy),
             REACTIVE_CHAIN_ID,
-            ORIGIN_FEED
+            ORIGIN_FEED,
+            ORIGIN_CHAIN_ID,
+            address(0) // No origin feed contract for testing
         );
         
         // Update FeedProxy to accept updates from callback

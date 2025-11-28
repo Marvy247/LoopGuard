@@ -9,7 +9,7 @@ import "../src/oracle/OracleReactive.sol";
 /// @notice Script to check and compare ETH/USD prices from Chainlink Sepolia and relayed Base Sepolia feed
 contract CheckOraclePrices is Script {
     
-    function run() external view {
+    function run() external {
         // Load addresses from environment
         address originFeed = vm.envAddress("ORIGIN_FEED_ADDRESS");
         address feedProxyAddress = vm.envAddress("FEED_PROXY_ADDRESS");
@@ -37,7 +37,7 @@ contract CheckOraclePrices is Script {
         console.log("\n===========================================");
     }
     
-    function _checkFeed(address feedAddress, string memory rpc, string memory name) internal view {
+    function _checkFeed(address feedAddress, string memory rpc, string memory name) internal {
         // Get decimals
         string[] memory decInputs = new string[](5);
         decInputs[0] = "cast";
@@ -91,7 +91,7 @@ contract CheckOraclePrices is Script {
         console.log("   Time Since Update:", vm.toString(timeSinceUpdate), "seconds");
     }
     
-    function _checkReactive(address reactiveAddress, string memory rpc) internal view {
+    function _checkReactive(address reactiveAddress, string memory rpc) internal {
         // Check balance
         string[] memory balInputs = new string[](4);
         balInputs[0] = "cast";
@@ -126,7 +126,7 @@ contract CheckOraclePrices is Script {
         
         console.log("   Balance:", vm.toString(balance / 1e18), "REACT");
         console.log("   Last Reported Price:", vm.toString(lastPrice));
-        console.log("   Deviation Threshold:", vm.toString(deviationThreshold), "basis points (", vm.toString(deviationThreshold / 100), ".", vm.toString(deviationThreshold % 100), "%)");
+        console.log("   Deviation Threshold:", vm.toString(deviationThreshold), "basis points");
         
         if (balance < 0.1 ether) {
             console.log("   WARNING: Low balance! Consider refilling.");
