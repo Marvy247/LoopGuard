@@ -1,6 +1,7 @@
 {
-  "name": "wallet-app",
-  "version": "0.1.0",
+  "name": "loopguard",
+  "version": "1.0.0",
+  "description": "LoopGuard Protocol - Your Position's 24/7 Guardian",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

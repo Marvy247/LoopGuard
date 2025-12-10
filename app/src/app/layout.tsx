@@ -1,31 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'react-hot-toast';
 import { Web3Provider } from "@/providers/Web3Provider";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Reactive Cross-Chain Oracle | Bounty #1 Submission",
+  title: "LoopGuard - Your Position's 24/7 Guardian",
   description:
-    "Autonomous cross-chain price feed oracle powered by Reactive Contracts. Mirror Chainlink feeds from Ethereum to Base with zero trust assumptions.",
+    "Leveraged looping protocol with autonomous liquidation defense. Build leveraged positions on Aave V3 with 24/7 reactive monitoring to prevent liquidations.",
   keywords:
-    "reactive contracts, cross-chain oracle, chainlink, price feed, defi, ethereum, base, trustless oracle",
+    "reactive contracts, defi, leveraged looping, aave, liquidation protection, defi automation, ethereum, sepolia",
   openGraph: {
-    title: "Reactive Cross-Chain Oracle",
+    title: "LoopGuard - Your Position's 24/7 Guardian",
     description:
-      "Production-grade cross-chain oracle using Reactive Contracts for autonomous price feed mirroring.",
+      "The first self-defending leveraged position protocol powered by Reactive Network.",
     images: ["/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Reactive Cross-Chain Oracle",
+    title: "LoopGuard Protocol",
     description:
-      "Trustless, autonomous cross-chain price feeds powered by Reactive Network.",
+      "Autonomous 24/7 liquidation protection for your leveraged positions.",
   },
 };
 
