@@ -31,6 +31,30 @@ This isn't just another looping protocol - **this is a self-defending wealth pre
 
 ##  Three-Tier Autonomous Protection System
 
+```mermaid
+graph TD
+    A[Monitor Health Factor] --> B{Check HF Level}
+    B -->|HF ≥ 3.0| C[🟢 SAFE ZONE]
+    B -->|1.5 ≤ HF < 2.0| D[🟡 WARNING ZONE]
+    B -->|HF < 1.5| E[🔴 DANGER ZONE]
+    
+    C --> C1[Monitor Only]
+    C1 --> C2[User Relaxes]
+    
+    D --> D1[Auto Reduce 20% Leverage]
+    D1 --> D2[Restore HF to 2.5+]
+    D2 --> D3[Position Protected]
+    
+    E --> E1[Emergency Deleverage 60%]
+    E1 --> E2[Restore HF to 2.5+]
+    E2 --> E3[Liquidation PREVENTED]
+    
+    style C fill:#10b981,stroke:#059669,stroke-width:3px,color:#fff
+    style D fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#fff
+    style E fill:#ef4444,stroke:#dc2626,stroke-width:3px,color:#fff
+    style E3 fill:#22c55e,stroke:#16a34a,stroke-width:2px
+```
+
 ###  **Safe Zone** (Health Factor > 3.0)
 - **Status**: All clear
 - **Action**: Monitor only
@@ -54,37 +78,60 @@ This isn't just another looping protocol - **this is a self-defending wealth pre
 
 ##  Architecture
 
+### System Overview
+
+```mermaid
+flowchart TB
+    User[👤 User] -->|1. Create Position| Factory[🏭 LoopingFactory<br/>Sepolia]
+    Factory -->|2. Deploys| Callback[📞 LoopingCallback<br/>Origin Chain Sepolia<br/><br/>✓ Execute loops<br/>✓ Manage position<br/>✓ Emergency unwind<br/>✓ Flash loan ops]
+    Factory -->|3. Deploys| Reactive[🛡️ LoopingReactive<br/>Reactive Network<br/><br/>THE GUARDIAN<br/>✓ Monitor 24/7<br/>✓ Track health factor<br/>✓ Auto-protect users]
+    
+    Callback <-->|Supply/Borrow| Aave[⚡ Aave V3 Pool<br/>Lending Protocol]
+    Callback <-->|Swap| Uniswap[🦄 Uniswap V3<br/>DEX]
+    
+    Aave -->|Events: Supply/Borrow/Repay| Reactive
+    Reactive -->|Health Factor Drop Detected| Reactive
+    Reactive -->|Emit Callback| Callback
+    Callback -->|Execute Protection| Aave
+    
+    style Factory fill:#3b82f6,stroke:#2563eb,stroke-width:3px,color:#fff
+    style Reactive fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
+    style Callback fill:#06b6d4,stroke:#0891b2,stroke-width:3px,color:#fff
+    style Aave fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    style Uniswap fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
 ```
-┌───────────────────────────────────────────────────────────┐
-│                     USER FLOW                              │
-└───────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-                 ┌──────────────────┐
-                 │ Looping Factory  │
-                 │ Deploy Position  │
-                 └────────┬─────────┘
-                          │
-          ┌───────────────┴────────────────┐
-          │                                │
-          ▼                                ▼
-┌─────────────────────┐      ┌──────────────────────────┐
-│ Looping Callback    │◄─────│ Looping Reactive         │
-│ (Origin Chain)      │      │ (Reactive Network)       │
-│                     │      │                          │
-│ • Execute loops     │      │  THE GUARDIAN         │
-│ • Manage position   │      │ • Monitor 24/7           │
-│ • Emergency unwind  │      │ • Track health factor    │
-│ • Flash loan ops    │      │ • Auto-protect users     │
-└─────────┬───────────┘      └──────────────────────────┘
-          │                              │
-          │  Interacts with:             │  Emits callbacks when
-          │                              │  health factor drops
-          ▼                              ▼
-┌────────────────────────────────────────────────────┐
-│              AAVE V3 LENDING PROTOCOL               │
-│  Supply → Borrow → Swap (Uniswap) → Repeat Loop    │
-└────────────────────────────────────────────────────┘
+
+### Event-Driven Protection Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Aave as Aave V3 Pool
+    participant Reactive as LoopingReactive<br/>(Reactive Network)
+    participant Callback as LoopingCallback<br/>(Sepolia)
+    
+    User->>Aave: Supply/Borrow (create leverage)
+    Aave->>Reactive: Emit Event (Supply/Borrow)
+    
+    Note over Reactive: react() function triggered
+    
+    Reactive->>Aave: Query getUserAccountData()
+    Aave-->>Reactive: Return Health Factor
+    
+    alt Health Factor < 1.5 (DANGER)
+        Reactive->>Reactive: Detect DANGER ZONE
+        Reactive->>Callback: Emit Callback (Emergency)
+        Callback->>Aave: Emergency Deleverage (60%)
+        Aave-->>User: Position Saved from Liquidation! 🛡️
+    else Health Factor 1.5-2.0 (WARNING)
+        Reactive->>Reactive: Detect WARNING ZONE
+        Reactive->>Callback: Emit Callback (Partial)
+        Callback->>Aave: Partial Deleverage (20%)
+        Aave-->>User: Position Protected ⚠️
+    else Health Factor ≥ 3.0 (SAFE)
+        Reactive->>Reactive: Continue Monitoring
+        Note over User: Sleep peacefully 😴
+    end
 ```
 
 ---
@@ -129,6 +176,41 @@ function updateSafetyThresholds(uint256 warning, uint256 danger) external
 - **Never sleeps - always watching**
 
 **The Magic - The `react()` Function**:
+
+```mermaid
+flowchart TD
+    A[Aave Event Emitted] -->|Supply/Borrow/Repay| B[react function triggered]
+    B --> C[Query getUserAccountData]
+    C --> D[Get Health Factor]
+    D --> E{Evaluate HF}
+    
+    E -->|HF < 1.5| F[🔴 DANGER ZONE]
+    E -->|1.5 ≤ HF < 2.0| G[🟡 WARNING ZONE]
+    E -->|HF ≥ 3.0| H[🟢 SAFE ZONE]
+    
+    F --> F1[alertCount++]
+    F1 --> F2[Emit EmergencyTriggered]
+    F2 --> F3[Emit Callback to Origin]
+    F3 --> F4[Callback executes 60% deleverage]
+    
+    G --> G1[alertCount++]
+    G1 --> G2[Emit WarningTriggered]
+    G2 --> G3[Emit Callback to Origin]
+    G3 --> G4[Callback executes 20% deleverage]
+    
+    H --> H1{alertCount > 0?}
+    H1 -->|Yes| H2[Emit SafeZoneRestored]
+    H2 --> H3[Reset alertCount = 0]
+    H1 -->|No| H4[Continue monitoring]
+    
+    style F fill:#ef4444,stroke:#dc2626,stroke-width:3px,color:#fff
+    style G fill:#f59e0b,stroke:#d97706,stroke-width:3px,color:#fff
+    style H fill:#10b981,stroke:#059669,stroke-width:3px,color:#fff
+    style F4 fill:#22c55e,stroke:#16a34a,stroke-width:2px
+    style G4 fill:#84cc16,stroke:#65a30d,stroke-width:2px
+```
+
+**Code Implementation**:
 ```solidity
 function react(LogRecord calldata log) external vmOnly {
     // Called automatically on EVERY Aave event
@@ -219,6 +301,59 @@ function getFlashLoanHelper() external view returns (address)
 
 ##  Usage Guide
 
+### Complete Workflow - Transaction by Transaction
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant Factory as LoopingFactory<br/>(Sepolia)
+    participant Callback as LoopingCallback<br/>(Sepolia)
+    participant Reactive as LoopingReactive<br/>(Reactive Network)
+    participant Aave as Aave V3<br/>(Sepolia)
+    participant Uni as Uniswap V3<br/>(Sepolia)
+    
+    Note over User,Uni: 📝 SETUP PHASE
+    User->>Factory: createPosition(WETH, USDC, 7000, 300) + 1 ETH
+    Factory->>Callback: Deploy LoopingCallback
+    Factory->>Reactive: Deploy LoopingReactive
+    Reactive->>Aave: Subscribe to Supply/Borrow/Repay events
+    Factory-->>User: Return (callbackAddr, reactiveAddr)
+    Note over User: TX #1: Position Created ✅
+    
+    Note over User,Uni: 🚀 LEVERAGE PHASE
+    User->>Callback: executeLeverageLoop(10 WETH)
+    loop Loop Iterations (3-5x)
+        Callback->>Aave: Supply WETH as collateral
+        Aave->>Reactive: Emit Supply event
+        Note over Reactive: react() monitors HF
+        Callback->>Aave: Borrow USDC
+        Aave->>Reactive: Emit Borrow event
+        Callback->>Uni: Swap USDC → WETH
+        Note over Callback: Repeat until target LTV
+    end
+    Note over User: TX #2: Leveraged Position Created 🎯<br/>Health Factor: 2.8 (SAFE)
+    
+    Note over User,Uni: ⚠️ MARKET VOLATILITY
+    Note over Aave: Price drops, HF decreases to 1.8
+    Aave->>Reactive: Emit event (any Aave activity)
+    Reactive->>Aave: Query getUserAccountData()
+    Aave-->>Reactive: Return HF = 1.8
+    Note over Reactive: HF < 2.0 → WARNING ZONE!
+    
+    Note over User,Uni: 🛡️ AUTOMATIC PROTECTION
+    Reactive->>Reactive: Detect WARNING threshold
+    Reactive->>Callback: Emit Callback (partial deleverage)
+    Note over User: TX #3: Reactive detects danger 🔔
+    
+    Callback->>Aave: Withdraw 20% collateral
+    Callback->>Uni: Swap WETH → USDC
+    Callback->>Aave: Repay debt
+    Note over User: TX #4: Callback executes protection ✅<br/>Health Factor: 2.3 (SAFE RESTORED)
+    
+    Note over User: 😴 User sleeps peacefully<br/>Position protected autonomously!
+```
+
 ### Quick Start
 
 ```solidity
@@ -304,6 +439,44 @@ callback.unwindPosition();
 ---
 
 ##  Comprehensive Edge Case Handling
+
+```mermaid
+flowchart TD
+    A[Execute Leverage Loop] --> B{Check Liquidity}
+    B -->|Insufficient| B1[❌ Exit Safely]
+    B -->|Sufficient| C{Check Borrow Cap}
+    
+    C -->|At Limit| C1[❌ Stop Looping]
+    C -->|Available| D[Calculate Borrow Amount]
+    
+    D --> E[Use 90% of Available]
+    E --> F[Execute Borrow]
+    
+    F --> G{Swap Needed?}
+    G -->|Yes| H[Calculate Min Output]
+    H --> I{Slippage Check}
+    I -->|Exceeds Max| I1[❌ Revert Transaction]
+    I -->|Within Limit| J[Execute Swap]
+    G -->|No Same Asset| K[Skip Swap]
+    
+    J --> L[Supply as Collateral]
+    K --> L
+    
+    L --> M{Check Health Factor}
+    M -->|HF < 1.5| M1[❌ Stop Unsafe]
+    M -->|HF ≥ 1.5| N{Target LTV Reached?}
+    
+    N -->|Yes| O[✅ Complete Success]
+    N -->|No| P{Max Iterations?}
+    P -->|Yes| O
+    P -->|No| B
+    
+    style B1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style C1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style I1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style M1 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style O fill:#22c55e,stroke:#16a34a,stroke-width:3px,color:#fff
+```
 
 ### 1. **Insufficient Liquidity**
 ```solidity
@@ -419,6 +592,56 @@ forge verify-contract \
 ---
 
 ##  Why This Wins First Place
+
+### The Competitive Advantage
+
+```mermaid
+graph TD
+    subgraph "🏆 LoopGuard - The Winner"
+        A1[Basic Looping ✓]
+        A2[Flash Loan Optimization ✓]
+        A3[Edge Case Handling ✓]
+        A4[24/7 Health Monitoring ⭐]
+        A5[Autonomous Protection ⭐]
+        A6[Three-Tier Safety System ⭐]
+        A7[Production Quality ✓]
+    end
+    
+    subgraph "📦 Standard Submissions"
+        B1[Basic Looping ✓]
+        B2[Manual Unwind ✓]
+        B3[Basic Checks ✓]
+        B4[No Monitoring ❌]
+        B5[No Protection ❌]
+        B6[Manual Only ❌]
+        B7[Hackathon Quality]
+    end
+    
+    style A4 fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
+    style A5 fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
+    style A6 fill:#8b5cf6,stroke:#7c3aed,stroke-width:3px,color:#fff
+    style B4 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style B5 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style B6 fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+```
+
+### Why Reactive Network is REQUIRED (Not Optional)
+
+```mermaid
+graph LR
+    A[24/7 Monitoring Need] --> B{Solution Options}
+    
+    B -->|Chainlink Automation| C[❌ Can't subscribe to<br/>Aave events directly]
+    B -->|Gelato Network| D[❌ Requires external bot<br/>Single point of failure]
+    B -->|The Graph + Bot| E[❌ Centralized infrastructure<br/>Downtime risk]
+    B -->|Reactive Network| F[✅ Native event subscription<br/>✅ Decentralized callbacks<br/>✅ Zero infrastructure<br/>✅ Always available]
+    
+    style A fill:#3b82f6,stroke:#2563eb,stroke-width:3px,color:#fff
+    style C fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style D fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style E fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
+    style F fill:#22c55e,stroke:#16a34a,stroke-width:3px,color:#fff
+```
 
 ### 1. **Solves Real Problem**
 Liquidation is the #1 fear in leverage trading. Our protocol **eliminates this fear** through autonomous protection.
