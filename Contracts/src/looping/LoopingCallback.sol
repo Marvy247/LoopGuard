@@ -33,8 +33,8 @@ contract LoopingCallback is AbstractCallback {
     uint256 public warningThreshold;       // HF threshold for warning (e.g., 2e18 = 2.0)
     uint256 public dangerThreshold;        // HF threshold for danger (e.g., 15e17 = 1.5)
     
-    // Loop parameters
-    uint256 public maxLoopIterations = 5;
+    // Loop parameters (set to 2 for testnet gas optimization)
+    uint256 public maxLoopIterations = 2;  // Optimized for testnet demonstration
     uint24 public uniswapPoolFee = 3000;   // 0.3% pool fee
     
     // State tracking
